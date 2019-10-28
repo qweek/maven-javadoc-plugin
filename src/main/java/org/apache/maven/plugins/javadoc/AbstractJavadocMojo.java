@@ -5207,10 +5207,22 @@ public abstract class AbstractJavadocMojo
                     }
                 }
 
-                String classpath = StringUtils.join( classPathElements.iterator(), File.pathSeparator );
-                addArgIfNotEmpty( arguments, "--class-path", JavadocUtil.quotedPathArgument( classpath ), false,
-                                  false );
-
+                if ( !classPathElements.isEmpty() )
+                {
+                    String classpath = StringUtils.join( classPathElements.iterator(), File.pathSeparator );
+                    addArgIfNotEmpty( arguments, "--class-path", JavadocUtil.quotedPathArgument( classpath )
+                            , false,
+                            false );
+                }
+                else if ( !result.getPathExceptions().isEmpty() )
+                {
+                    String classpath = StringUtils.join( result.getPathExceptions().keySet().iterator(),
+                            File.pathSeparator );
+                    addArgIfNotEmpty( arguments, "--class-path",
+                            JavadocUtil.quotedPathArgument( classpath ),
+                            false,
+                            false );
+                }
                 String modulepath =
                     StringUtils.join( modulePathElements.iterator(), File.pathSeparator );
                 addArgIfNotEmpty( arguments, "--module-path", JavadocUtil.quotedPathArgument( modulepath ), false,
@@ -5747,17 +5759,17 @@ public abstract class AbstractJavadocMojo
         }
 
         String cmdLine = null;
-        if ( debug )
-        {
-            cmdLine = CommandLineUtils.toString( cmd.getCommandline() ).replaceAll( "'", "" );
-
-            writeDebugJavadocScript( cmdLine, javadocOutputDirectory );
-        }
 
         CommandLineUtils.StringStreamConsumer err = new JavadocUtil.JavadocOutputStreamConsumer();
         CommandLineUtils.StringStreamConsumer out = new JavadocUtil.JavadocOutputStreamConsumer();
         try
         {
+
+            if ( debug )
+            {
+                writeDebugJavadocScript( cmd, javadocOutputDirectory );
+            }
+
             int exitCode = CommandLineUtils.executeCommandLine( cmd, out, err );
 
             String output = ( StringUtils.isEmpty( out.getOutput() ) ? null : '\n' + out.getOutput().trim() );
@@ -5768,7 +5780,7 @@ public abstract class AbstractJavadocMojo
                 {
                     cmdLine = CommandLineUtils.toString( cmd.getCommandline() ).replaceAll( "'", "" );
                 }
-                writeDebugJavadocScript( cmdLine, javadocOutputDirectory );
+                writeDebugJavadocScript( cmd, javadocOutputDirectory );
 
                 if ( StringUtils.isNotEmpty( output ) && StringUtils.isEmpty( err.getOutput() )
                     && isJavadocVMInitError( output ) )
@@ -6508,26 +6520,45 @@ public abstract class AbstractJavadocMojo
     /**
      * Write a debug javadoc script in case of command line error or in debug mode.
      *
-     * @param cmdLine                the current command line as string, not null.
+     * @param commandline            the current command line not null.
      * @param javadocOutputDirectory the output dir, not null.
      * @see #executeJavadocCommandLine(Commandline, File)
      * @since 2.6
      */
-    private void writeDebugJavadocScript( String cmdLine, File javadocOutputDirectory )
+    private void writeDebugJavadocScript( Commandline commandline, File javadocOutputDirectory )
     {
         File commandLineFile = new File( javadocOutputDirectory, DEBUG_JAVADOC_SCRIPT_NAME );
         commandLineFile.getParentFile().mkdirs();
 
         try
         {
-            FileUtils.fileWrite( commandLineFile.getAbsolutePath(), null /* platform encoding */, cmdLine );
+
+            StringBuilder cmdLine = new StringBuilder();
+
+            if ( !SystemUtils.IS_OS_WINDOWS )
+            {
+                cmdLine.append( "cd " )
+                        .append( commandline.getWorkingDirectory().getAbsolutePath() )
+                        .append( SystemUtils.LINE_SEPARATOR );
+            }
+
+            for ( String envVar : commandline.getEnvironmentVariables() )
+            {
+                cmdLine.append( envVar )
+                        .append( SystemUtils.LINE_SEPARATOR );
+            }
+            cmdLine.append( CommandLineUtils.toString( commandline.getCommandline() )
+                    .replaceAll( "'", "" ) )
+                    .append( SystemUtils.LINE_SEPARATOR );
+
+            FileUtils.fileWrite( commandLineFile.getAbsolutePath(), null /* platform encoding */, cmdLine.toString() );
 
             if ( !SystemUtils.IS_OS_WINDOWS )
             {
                 Runtime.getRuntime().exec( new String[]{ "chmod", "a+x", commandLineFile.getAbsolutePath() } );
             }
         }
-        catch ( IOException e )
+        catch ( IOException | CommandLineException e )
         {
             logError( "Unable to write '" + commandLineFile.getName() + "' debug script file", e );
         }
