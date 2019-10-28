@@ -5179,7 +5179,7 @@ public abstract class AbstractJavadocMojo
 
                 Set<File> modulePathElements = new HashSet<>( result.getModulepathElements().keySet() )  ;
 
-                Collection<File> classPathElements = new ArrayList<>( result.getClasspathElements().size() );
+                Set<File> classPathElements = new HashSet<>( result.getClasspathElements().size() );
 
                 for ( File file : result.getClasspathElements() )
                 {
@@ -5207,6 +5207,11 @@ public abstract class AbstractJavadocMojo
                     }
                 }
 
+                if ( !result.getPathExceptions().isEmpty() )
+                {
+                    classPathElements.addAll( result.getPathExceptions().keySet() );
+                }
+
                 if ( !classPathElements.isEmpty() )
                 {
                     String classpath = StringUtils.join( classPathElements.iterator(), File.pathSeparator );
@@ -5214,15 +5219,7 @@ public abstract class AbstractJavadocMojo
                             , false,
                             false );
                 }
-                else if ( !result.getPathExceptions().isEmpty() )
-                {
-                    String classpath = StringUtils.join( result.getPathExceptions().keySet().iterator(),
-                            File.pathSeparator );
-                    addArgIfNotEmpty( arguments, "--class-path",
-                            JavadocUtil.quotedPathArgument( classpath ),
-                            false,
-                            false );
-                }
+                
                 String modulepath =
                     StringUtils.join( modulePathElements.iterator(), File.pathSeparator );
                 addArgIfNotEmpty( arguments, "--module-path", JavadocUtil.quotedPathArgument( modulepath ), false,
