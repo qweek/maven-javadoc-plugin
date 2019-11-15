@@ -68,7 +68,7 @@ under the License.
   <properties>
     <javaVersion>7</javaVersion>
     <mavenVersion>3.6.2</mavenVersion>
-    <doxiaVersion>1.7</doxiaVersion>
+    <doxiaVersion>1.9</doxiaVersion>
     <doxia-sitetoolsVersion>1.9.1</doxia-sitetoolsVersion>
     <wagonVersion>3.3.4</wagonVersion>
     <!-- for ITs -->
